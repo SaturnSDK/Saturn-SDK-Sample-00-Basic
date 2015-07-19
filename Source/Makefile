@@ -24,6 +24,10 @@ MAKE=$(SATURN_ROOT)/toolchain/bin/saturn-make
 
 CFLAGS = -m2
 
+ifeq ($(DEVCART),True)
+CFLAGS += -DBUILD_USBDEVCART
+endif
+
 LDFLAGS = -m2  -Xlinker --format=elf32-sh -Xlinker -T$(TOPSRC)/Saturn.lnk \
 	-Xlinker -Map -Xlinker $(TARGETDIR)/$(TARGET).map \
 	-Xlinker -e -Xlinker ___Start -nostartfiles

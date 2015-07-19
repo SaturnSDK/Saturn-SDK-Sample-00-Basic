@@ -58,3 +58,6 @@ GitVersion.hpp
 *.aux
 *.log
 *.toc
+
+IP.BIN
+ip.bin
