@@ -1,5 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 extern unsigned int _BSSBegin, _BSSEnd;
 
@@ -109,7 +111,7 @@ extern unsigned int _BSSBegin, _BSSEnd;
 #define VDP2_CRAM	VDP2_BASE + 0x100000
 #define VDP2_REG	VDP2_BASE + 0x180000
 #define VDP2_TVMD	( *( volatile uint16_t * )( 0x25F80000 ) )
-#define VDP2_TVSTAT	( *( volatile uint16_t * )( 0x25F80000 ) )
+#define VDP2_TVSTAT	( *( volatile uint16_t * )( 0x25F80004 ) )
 
 /* Pointer access to VDP2 addresses */
 volatile uint16_t *VDP2_VRAM_PTR	= ( volatile uint16_t * )( VDP2_VRAM );
@@ -361,6 +363,8 @@ void main( void )
 	unsigned int Index;
 	uint32_t VInt;
 	uint16_t PadNew, PadOld, PadDelta;
+	uint16_t Red = 3, Green = 11, Blue = 19;
+	uint32_t FrameCount = 0U;
 
 	/* Zero the .bss */
 	for( pDestination = ( unsigned char * )&_BSSBegin;
@@ -390,13 +394,29 @@ void main( void )
 	/* First color in VRAM set to a SEGA blue */
 	VDP2_SetBackgroundColor( 3, 11, 19 );
 
+	CON_Print( 2, 1, 0xF0, "Buttons" );
+	CON_Print( 2, 2, 0xF0, "Start - Reset SEGA Saturn" );
+	CON_Print( 2, 3, 0xF0, "A     - Increase red color" );
+	CON_Print( 2, 4, 0xF0, "B     - Increase green color" );
+	CON_Print( 2, 5, 0xF0, "C     - Increase blue color" );
+	CON_Print( 2, 6, 0xF0, "X     - Decrease red color" );
+	CON_Print( 2, 7, 0xF0, "Y     - Decrease green color" );
+	CON_Print( 2, 8, 0xF0, "Z     - Decrease blue color" );
+
+	CON_Print( 2, 20, 0xF0, "R:" );
+	CON_Print( 2, 21, 0xF0, "G:" );
+	CON_Print( 2, 22, 0xF0, "B:" );
+
 	CON_Print( 5, 26, 0xF0, "SEGA Saturn Sample 001 - Basic" );
+	CON_Print( 9, 27, 0xF0, "[saturnsdk.github.io]" );
 
 	for( ;; )
 	{
 		char PrintBuffer[ 80 ];
+		size_t StringSize;
 
-		WaitVBlank( );
+		WaitVBlankOut( );
+		WaitVBlankIn( );
 
 		VDP1_FBCR = 0x0001;
 			
@@ -409,6 +429,131 @@ void main( void )
 		{
 			break;
 		}
+
+		utoa( FrameCount, PrintBuffer, 10 );
+		StringSize = strlen( PrintBuffer );
+
+		/* Clear the nine characters before the last one if the frame counter
+		 * loops around */
+		if( FrameCount == 0 )
+		{
+			CON_Print( 30, 0, 0x00, "         " );
+		}
+
+		CON_Print( 40 - StringSize, 0, 0xF0, PrintBuffer );
+
+		++FrameCount;
+
+		/* Increase/Decrease the clear color via the gamepad */
+
+		if( PadNew & PER_A )
+		{
+			++Red;
+		}
+
+		if( PadNew & PER_B )
+		{
+			++Green;
+		}
+
+		if( PadNew & PER_C )
+		{
+			++Blue;
+		}
+
+		if( PadNew & PER_X )
+		{
+			if( Red != 0 )
+			{
+				--Red;
+			}
+		}
+
+		if( PadNew & PER_Y )
+		{
+			if( Green != 0 )
+			{
+				--Green;
+			}
+		}
+
+		if( PadNew & PER_Z )
+		{
+			if( Blue != 0 )
+			{
+				--Blue;
+			}
+		}
+
+		if( Red >= 31 )
+		{
+			Red = 31;
+		}
+		if( Red <= 0 )
+		{
+			Red = 0;
+		}
+
+		if( Green >= 31 )
+		{
+			Green = 31;
+		}
+
+		if( Green <= 0 )
+		{
+			Green = 0;
+		}
+
+		if( Blue >= 31 )
+		{
+			Blue = 31;
+		}
+		if( Blue <= 0 )
+		{
+			Blue = 0;
+		}
+
+		/* Print out the current RGB values */
+
+		utoa( Red, PrintBuffer, 10 );
+		StringSize = strlen( PrintBuffer );
+		if( StringSize == 2 )
+		{
+			CON_Print( 5, 20, 0xF0, PrintBuffer );
+		}
+		else
+		{
+			CON_Print( 6, 20, 0xF0, PrintBuffer );
+			CON_PrintChar( 5, 20, 0xF0, '0' );
+		}
+
+		utoa( Green, PrintBuffer, 10 );
+		StringSize = strlen( PrintBuffer );
+		if( StringSize == 2 )
+		{
+			CON_Print( 5, 21, 0xF0, PrintBuffer );
+		}
+		else
+		{
+			CON_Print( 6, 21, 0xF0, PrintBuffer );
+			CON_PrintChar( 5, 21, 0xF0, '0' );
+		}
+
+		utoa( Blue, PrintBuffer, 10 );
+		StringSize = strlen( PrintBuffer );
+		if( StringSize == 2 )
+		{
+			CON_Print( 5, 22, 0xF0, PrintBuffer );
+		}
+		else
+		{
+			CON_Print( 6, 22, 0xF0, PrintBuffer );
+			CON_PrintChar( 5, 22, 0xF0, '0' );
+		}
+
+		/* Change the background color */
+
+		VDP2_SetBackgroundColor( Red, Green, Blue );
 	}
 
 	PER_Shutdown( );
@@ -594,34 +739,33 @@ void VDP2_SetBackgroundColor( uint8_t p_Red, uint8_t p_Green, uint8_t p_Blue )
 
 void WaitHBlankOut( void )
 {
-	while( ( VDP2_TVSTAT & 4 ) == 0 );
+	while( ( VDP2_TVSTAT & 4 ) == 4 );
 }
 
 void WaitHBlankIn( void )
 {
-	while( ( VDP2_TVSTAT & 4 ) == 4 );
+	while( ( VDP2_TVSTAT & 4 ) == 0 );
 }
 
 void WaitVBlankOut( void )
 {
-	while( ( VDP2_TVSTAT & 8 ) == 0 );
+	while( ( VDP2_TVSTAT & 8 ) == 8 );
 }
 
 void WaitVBlankIn( void )
 {
-	while( ( VDP2_TVSTAT & 8 ) == 8 );
+	while( ( VDP2_TVSTAT & 8 ) == 0 );
 }
-
 
 void WaitHBlank( void )
 {
-	while( ( VDP2_TVSTAT & 4 ) == 4 );
+	while( ( VDP2_TVSTAT & 4 ) == 0 );
 	while( ( VDP2_TVSTAT & 4 ) == 4 );
 }
 
 void WaitVBlank( void )
 {
-	while( ( VDP2_TVSTAT & 8 ) == 8 );
+	while( ( VDP2_TVSTAT & 8 ) == 0 );
 	while( ( VDP2_TVSTAT & 8 ) == 8 );
 }
 
