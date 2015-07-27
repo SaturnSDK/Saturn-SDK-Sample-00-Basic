@@ -377,7 +377,7 @@ void main( void )
 	PER_Initialize( );
 	CON_Initialize( );
 
-	StringOut( "SEGA Saturn SDK Sample 001 - Basic\n" );
+	StringOut( "SEGA Saturn SDK Sample 00 - Basic\n" );
 
 	VDP1_TVMR = 0x0000;
 	VDP1_FBCR = 0x0000;
