@@ -14,6 +14,7 @@ ISO	?= False
 PROJECT	:= Basic
 TARGET	:= $(PROJECT)
 OUTFILE	= $(TARGETDIR)/$(TARGET)
+EXT		:= .elf
 
 CROSS_COMPILE=$(SATURN_ROOT)/toolchain_elf/bin/saturn-sh2-elf-
 
@@ -37,7 +38,7 @@ debug:	BUILD = Debug
 debug:	BUILD_TYPE = debug
 debug:	BUILD_DEF = DEBUG
 debug:	TARGET := $(TARGET)D
-debug:	CFLAGS	+= -g
+debug:	CFLAGS	+= -g -ggdb
 debug:	$(TARGET)
 
 release: BUILD = Release
@@ -45,24 +46,25 @@ release: BUILD_TYPE = release
 release: BUILD_DEF = RELEASE
 release: TARGET := $(TARGET)
 release: LDFLAGS += -Xlinker --strip-debug
+release: CFLAGS += -O2
 release: $(TARGET)
 
 ifneq ($(OBJDIR), $(CURDIR))
-$(TARGETDIR):
+TARGETDIR:
 	mkdir -p $(TARGETDIR)
 
-$(OBJDIR):
+OBJDIR:
 	mkdir -p $(OBJDIR)
 
 CFILES	:= $(foreach dir,$(SOURCEDIR),$(notdir $(wildcard $(dir)/*.c)))
 # Ignore the crt files from the object files
-ASFILES	:= $(foreach dir,$(SOURCEDIR),$(notdir $(filter-out $(dir)/$(wildcard crt*.s), $(wildcard $(dir)/*.s))))
+ASFILES	:= $(foreach dir,$(SOURCEDIR),$(notdir $(filter-out $(wildcard $(dir)/crt*.s), $(wildcard $(dir)/*.s))))
 export VPATH	:= $(foreach dir,$(SOURCEDIR),$(CURDIR)/$(dir))
 export OBJS		:= $(CFILES:.c=.o) $(ASFILES:.s=.o)
 # VPATH should allow the crt*.s files to be picked up (assuming they have not been moved)
 export CRTOBJS	:= crt0.o
 
-$(TARGET): $(OBJDIR) $(TARGETDIR)
+$(TARGET): OBJDIR TARGETDIR
 	$(MAKE) -C $(OBJDIR) -f $(TOPSRC)/Makefile $(BUILD_TYPE)
 	# This seems a lot less elegant than I'd like
 ifeq ($(ISO),True)
@@ -84,11 +86,11 @@ endif
 else
 
 $(TARGET): $(CRTOBJS) $(OBJS)
-	printf "Linking: $(OUTFILE) ... "
-	$(CC) -o $(OUTFILE) $(LDFLAGS) $(CRTOBJS) $(OBJS)
+	printf "Linking: $(OUTFILE)$(EXT) ... "
+	$(CC) -o $(OUTFILE)$(EXT) $(LDFLAGS) $(CRTOBJS) $(OBJS)
 	printf "Done\n"
-	printf "Converting $(OUTFILE) to $(OUTFILE).bin ... "
-	$(OBJCOPY) -O binary $(OUTFILE) $(OUTFILE).bin
+	printf "Converting $(OUTFILE)$(EXT) to $(OUTFILE).bin ... "
+	$(OBJCOPY) -O binary $(OUTFILE)$(EXT) $(OUTFILE).bin
 	printf "Done\n"
 
 %.o: %.c
@@ -108,8 +110,8 @@ endif
 .PHONY: clean iso
 
 clean:
-	printf "Removing $(TARGETDIR) ... "
-	rm -rf $(TARGETDIR)
+	printf "Removing $(TARGETDIR)/$(PROJECT)* ... "
+	rm -rf $(TARGETDIR)/$(PROJECT)*
 	printf "Done\n"
 	printf "Removing $(OBJDIR) ... "
 	rm -rf $(OBJDIR)

@@ -1,7 +1,10 @@
 OUTPUT_FORMAT("elf32-sh")
-SECTIONS
-{
-	. = 0x06004000;
+SECTIONS {
+	SLSTART 0x06004000 :
+	{
+		__ssStart = .;
+		*( SLSTART )
+	}
 	.text ALIGN( 0x20 ) :
 	{
 		*( .text )
