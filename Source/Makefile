@@ -18,6 +18,7 @@ OUTFILE	= $(TARGETDIR)/$(TARGET)
 CROSS_COMPILE=$(SATURN_ROOT)/toolchain_elf/bin/saturn-sh2-elf-
 
 CC=$(CROSS_COMPILE)gcc
+AS=$(CROSS_COMPILE)as
 LD=$(CROSS_COMPILE)ld
 OBJCOPY=$(CROSS_COMPILE)objcopy
 MAKE=$(SATURN_ROOT)/toolchain/bin/saturn-make
@@ -28,9 +29,9 @@ ifeq ($(DEVCART),True)
 CFLAGS += -DBUILD_USBDEVCART
 endif
 
-LDFLAGS = -m2  -Xlinker --format=elf32-sh -Xlinker -T$(TOPSRC)/Saturn.lnk \
+LDFLAGS = -m2 -Xlinker -T$(TOPSRC)/Saturn.lnk \
 	-Xlinker -Map -Xlinker $(TARGETDIR)/$(TARGET).map \
-	-Xlinker -e -Xlinker ___Start -nostartfiles
+	-nostartfiles
 
 debug:	BUILD = Debug
 debug:	BUILD_TYPE = debug
@@ -54,8 +55,12 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 CFILES	:= $(foreach dir,$(SOURCEDIR),$(notdir $(wildcard $(dir)/*.c)))
+# Ignore the crt files from the object files
+ASFILES	:= $(foreach dir,$(SOURCEDIR),$(notdir $(filter-out $(dir)/$(wildcard crt*.s), $(wildcard $(dir)/*.s))))
 export VPATH	:= $(foreach dir,$(SOURCEDIR),$(CURDIR)/$(dir))
-export OBJS		:= $(CFILES:.c=.o)
+export OBJS		:= $(CFILES:.c=.o) $(ASFILES:.s=.o)
+# VPATH should allow the crt*.s files to be picked up (assuming they have not been moved)
+export CRTOBJS	:= crt0.o
 
 $(TARGET): $(OBJDIR) $(TARGETDIR)
 	$(MAKE) -C $(OBJDIR) -f $(TOPSRC)/Makefile $(BUILD_TYPE)
@@ -78,9 +83,9 @@ endif
 
 else
 
-$(TARGET): $(OBJS)
+$(TARGET): $(CRTOBJS) $(OBJS)
 	printf "Linking: $(OUTFILE) ... "
-	$(CC) -o $(OUTFILE) $(LDFLAGS) $(OBJS)
+	$(CC) -o $(OUTFILE) $(LDFLAGS) $(CRTOBJS) $(OBJS)
 	printf "Done\n"
 	printf "Converting $(OUTFILE) to $(OUTFILE).bin ... "
 	$(OBJCOPY) -O binary $(OUTFILE) $(OUTFILE).bin
@@ -89,6 +94,11 @@ $(TARGET): $(OBJS)
 %.o: %.c
 	printf "Compiling: $< ... "
 	$(CC) -MMD -MP -MF $*.d $(CFLAGS) -c $< -o $@
+	printf "Done\n"
+
+%.o: %.s
+	printf "Assembling: $< ... "
+	$(AS) $< -o $@
 	printf "Done\n"
 
 -include $(OBJDIR)/*.d

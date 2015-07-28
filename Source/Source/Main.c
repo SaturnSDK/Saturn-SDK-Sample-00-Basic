@@ -3,8 +3,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern unsigned int _BSSBegin, _BSSEnd;
-
 #define USB_FIFO	( *( volatile uint8_t * )( 0x22100001 ) )
 #define USB_FLAGS	( *( volatile uint8_t * )( 0x22200001 ) )
 #define USB_TXE		( 1 << 1 )
@@ -366,13 +364,6 @@ void main( void )
 	uint16_t Red = 3, Green = 11, Blue = 19;
 	uint32_t FrameCount = 0U;
 
-	/* Zero the .bss */
-	for( pDestination = ( unsigned char * )&_BSSBegin;
-		pDestination < ( unsigned char * )&_BSSEnd; ++pDestination )
-	{
-		*pDestination = 0;
-	}
-
 	VDP_Initialize( );
 	PER_Initialize( );
 	CON_Initialize( );
@@ -407,8 +398,8 @@ void main( void )
 	CON_Print( 2, 21, 0xF0, "G:" );
 	CON_Print( 2, 22, 0xF0, "B:" );
 
-	CON_Print( 5, 26, 0xF0, "SEGA Saturn Sample 001 - Basic" );
-	CON_Print( 9, 27, 0xF0, "[saturnsdk.github.io]" );
+	CON_Print( 5, 26, 0xF0, "SEGA Saturn Sample 00 - Basic" );
+	CON_Print( 8, 27, 0xF0, "[saturnsdk.github.io]" );
 
 	for( ;; )
 	{
